@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LANKATILES Room Visualizer</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #ffffff;
+    }
+
+    #visualizer-wrapper {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      background: #ffffff;
+    }
+
+    #visualizer-frame {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+    }
+
+    /* Warning overlay */
+    #session-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 99999;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      box-sizing: border-box;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+    }
+
+    #session-box {
+      width: 100%;
+      max-width: 460px;
+      padding: 34px 30px;
+      box-sizing: border-box;
+      text-align: center;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 18px 60px rgba(0, 0, 0, 0.30);
+    }
+
+    #session-box h2 {
+      margin: 0 0 12px;
+      font-size: 25px;
+      line-height: 1.25;
+      color: #222222;
+    }
+
+    #session-box p {
+      margin: 0 0 18px;
+      font-size: 15px;
+      line-height: 1.55;
+      color: #555555;
+    }
+
+    #countdown {
+      margin: 18px 0 24px;
+      font-size: 50px;
+      line-height: 1;
+      font-weight: 700;
+      color: #d71920;
+    }
+
+    #countdown-label {
+      display: block;
+      margin-top: 9px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      color: #777777;
+    }
+
+    .button {
+      width: 100%;
+      padding: 14px 18px;
+      border-radius: 7px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+
+    #continue-btn {
+      border: 0;
+      background: #d71920;
+      color: #ffffff;
+    }
+
+    #continue-btn:hover {
+      opacity: 0.90;
+    }
+
+    #end-btn {
+      margin-top: 12px;
+      border: 1px solid #cccccc;
+      background: #ffffff;
+      color: #555555;
+    }
+
+    #note {
+      margin: 18px 0 0 !important;
+      font-size: 12px !important;
+      color: #888888 !important;
+    }
+
+    /* Developer credit below the warning box */
+    #developer-credit {
+      margin-top: 14px;
+      text-align: center;
+      font-family: Arial, Helvetica, sans-serif;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.75);
+      letter-spacing: 0.2px;
+    }
+
+    #developer-credit strong {
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    #developer-credit span {
+      display: block;
+      margin-top: 3px;
+      font-size: 10px;
+      letter-spacing: 1.2px;
+      color: rgba(255, 255, 255, 0.55);
+    }
+
+    @media (max-width: 600px) {
+      #session-box {
+        max-width: 360px;
+        padding: 28px 22px;
+      }
+
+      #session-box h2 {
+        font-size: 22px;
+      }
+
+      #countdown {
+        font-size: 44px;
+      }
+
+      #developer-credit {
+        font-size: 11px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- Tilesview Visualizer -->
+  <div id="visualizer-wrapper">
+    <iframe
+      id="visualizer-frame"
+      src="https://tilesview.ai/app/yAppfsmGg4SZB4PNAIATBA/visualizer/1182?share-product=1008146"
+      allowfullscreen
+      referrerpolicy="strict-origin-when-cross-origin">
+    </iframe>
+  </div>
+
+  <!-- 30-second session warning -->
+  <div id="session-overlay">
+
+    <div id="session-box">
+
+      <h2>Are you still using the Visualizer?</h2>
+
+      <p>
+        Your session is about to end.
+        Select <strong>Continue Session</strong> to keep using the
+        LANKATILES Room Visualizer.
+      </p>
+
+      <div id="countdown">
+        <span id="countdown-number">30</span>
+        <span id="countdown-label">seconds remaining</span>
+      </div>
+
+      <button id="continue-btn" class="button" type="button">
+        Continue Session
+      </button>
+
+      <button id="end-btn" class="button" type="button">
+        End Session
+      </button>
+
+      <p id="note">
+        If no action is taken, you will be returned to the showroom selection page.
+      </p>
+
+    </div>
+
+    <div id="developer-credit">
+      Concept &amp; Development by <strong>Ishan Perera</strong>
+      <span>LANKATILES</span>
+    </div>
+
+  </div>
+
+  <script>
+    (function () {
+
+      /*
+        ============================================================
+        SETTINGS
+        ============================================================
+
+        Total session length: 5 minutes
+        Warning appears: 30 seconds before timeout
+        Therefore warning appears at 4 minutes 30 seconds
+      */
+
+      const SESSION_LENGTH_MS = 5 * 60 * 1000;
+      const WARNING_LENGTH_MS = 30 * 1000;
+
+      const TALLY_URL = "https://tally.so/r/aQLXev";
+
+      /*
+        ============================================================
+        ELEMENTS
+        ============================================================
+      */
+
+      const overlay = document.getElementById("session-overlay");
+      const countdownNumber = document.getElementById("countdown-number");
+      const continueButton = document.getElementById("continue-btn");
+      const endButton = document.getElementById("end-btn");
+
+      /*
+        ============================================================
+        TIMERS
+        ============================================================
+      */
+
+      let warningTimer = null;
+      let sessionTimer = null;
+      let countdownTimer = null;
+
+      function clearTimers() {
+        clearTimeout(warningTimer);
+        clearTimeout(sessionTimer);
+        clearInterval(countdownTimer);
+      }
+
+      function hideWarning() {
+        overlay.style.display = "none";
+        countdownNumber.textContent = "30";
+      }
+
+      /*
+        Start a fresh 5-minute session.
+      */
+      function startSession() {
+        clearTimers();
+        hideWarning();
+
+        /*
+          Warning appears at:
+          5:00 - 0:30 = 4:30
+        */
+        warningTimer = setTimeout(
+          showWarning,
+          SESSION_LENGTH_MS - WARNING_LENGTH_MS
+        );
+
+        /*
+          Redirect at exactly 5:00
+        */
+        sessionTimer = setTimeout(
+          endSession,
+          SESSION_LENGTH_MS
+        );
+      }
+
+      /*
+        Show warning and start 30-second countdown.
+      */
+      function showWarning() {
+        overlay.style.display = "flex";
+
+        let secondsLeft = 30;
+        countdownNumber.textContent = secondsLeft;
+
+        countdownTimer = setInterval(function () {
+          secondsLeft -= 1;
+
+          if (secondsLeft >= 0) {
+            countdownNumber.textContent = secondsLeft;
+          }
+
+          if (secondsLeft <= 0) {
+            clearInterval(countdownTimer);
+          }
+        }, 1000);
+      }
+
+      /*
+        End the session and return to Tally.
+      */
+      function endSession() {
+        clearTimers();
+
+        /*
+          window.location.replace() prevents the user from
+          using the browser Back button to return directly
+          to the expired visualizer session.
+        */
+        window.location.replace(TALLY_URL);
+      }
+
+      /*
+        Continue Session:
+        Starts another fresh 5-minute session.
+      */
+      continueButton.addEventListener("click", function () {
+        startSession();
+      });
+
+      /*
+        End Session:
+        Immediately redirects to Tally.
+      */
+      endButton.addEventListener("click", function () {
+        endSession();
+      });
+
+      /*
+        Start first 5-minute session when page loads.
+      */
+      startSession();
+
+    })();
+  </script>
+
+</body>
+</html>
